@@ -1,3 +1,5 @@
+//Code based/inspired by CSGOempire Martin gale Guide a video of NudeCoder https://www.youtube.com/@nudecoder991
+
 var startBet = 1;
 const beforeIShouldBetT = 6;
 const beforeIShouldBetCT = 6;
@@ -120,13 +122,13 @@ function bindbtns() {
         var bettingAmountInRealNumbers = (Math.floor(currentBet)) / 100; 
         var bettingAmountInRealNumbers2 = bettingAmountInRealNumbers.toFixed(2);
         if (token === 1) {
-          console.log("Betting " + bettingAmountInRealNumbers + "On T");
+          console.log("Betting " + bettingAmountInRealNumbers + " On T");
           btn_bet_t.click();
         } else if (token === 2) {
-          console.log("Betting " + bettingAmountInRealNumbers + "On CT");
+          console.log("Betting " + bettingAmountInRealNumbers + " On CT");
           btn_bet_ct.click();
         } else if (token === 3) {
-          console.log("Betting " + bettingAmountInRealNumbers + "On Dice");
+          console.log("Betting " + bettingAmountInRealNumbers + " On Dice");
           btn_bet_dice.click();
         }
       }
