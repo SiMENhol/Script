@@ -1,8 +1,8 @@
 //Code based/inspired by CSGOempire Martin gale Guide a video of NudeCoder https://www.youtube.com/@nudecoder991
 
 var startBet = 1;
-const beforeIShouldBetT = 6;
-const beforeIShouldBetCT = 6;
+const beforeIShouldBetT = 2;
+const beforeIShouldBetCT = 2;
 const beforeIShouldBetDice= 5000;
 const blackRedIncreaser = 2;
 const greenIncreaser = 1.5;
@@ -165,4 +165,4 @@ function bindbtns() {
                 stepToPeform = 0;
             }
          }
-    }, 1500);
+    }, 28000);
