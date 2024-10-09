@@ -1,20 +1,21 @@
 // Function to click the buttons
 function clickButton(buttonAlt) {
-  const buttons = document.querySelectorAll('.bet-btn');
-  buttons.forEach(button => {
-    if (button.alt === buttonAlt) {
-      button.click();
-    }
-  });
-}
+    const buttons = document.querySelectorAll('.bet-btn');
+    buttons.forEach(button => {
+      if (button.alt === buttonAlt) {
+        button.click();
+      }
+    });
+  }
+  
 
 // Function to check the spinning wheel outcome and perform button presses accordingly
 function checkSpinningWheelOutcome() {
-  const spinningWheelCountdown = document.querySelector('.text-2xl.font-bold.font-numeric');
+    const spinningWheelCountdown = document.querySelector('.text-2xl.font-bold.font-numeric');
   const previousRolls = document.querySelectorAll('.previous-rolls-item');
 
   // Check if the spinning wheel is currently spinning
-  if (spinningWheelCountdown.textContent === '00:00') {
+  if (spinningWheelCountdown.textContent === '0,00') {
     const spinningWheelOutcome = getSpinningWheelOutcome();
 
     // Track the number of times the spinning wheel landed on "t" or "ct"
@@ -36,7 +37,7 @@ function checkSpinningWheelOutcome() {
     }
 
     // If the spinning wheel didn't land on "t" or "ct" after 30 spins, press "bonus" button
-    if (localStorage.getItem('spinCount') >= 30) {
+    if (localStorage.getItem('spinCount') >= 1) {
       clickButton('bonus');
       localStorage.removeItem('spinCount');
       console.log('Button pressed: bonus');
