@@ -1,66 +1,174 @@
-// Function to click the buttons
-function clickButton(buttonAlt) {
-    const buttons = document.querySelectorAll('.bet-btn');
-    buttons.forEach(button => {
-      if (button.alt === buttonAlt) {
-        button.click();
-      }
-    });
-  }
-  
-  // Function to check the spinning wheel outcome and perform button presses accordingly
-  function checkSpinningWheelOutcome() {
+let stepToPerform = 0;           // Initial step
+let token = 0;                   // Token for betting logic
+let startBet = 0.05;              // Sets the startbet
+let lastBet = startBet;           // Keeps track of the last bet amount
+let activeBet = false;            // Track if a bet is active
+let doubleCount = 0;              // Tracks how many times the bet has been doubled
+let lastButtonClicked = null;     // Keeps track of the last button that was clicked
+let lastOutcome = null;           // Stores the outcome of the last round
+let hasPerformedSteps = false;    // Flag to indicate if steps have been performed
+let streakCT = 0;                 // Track the consecutive count of CT
+let streakT = 0;                  // Track the consecutive count of T
+let betPlacedInCurrentRound = false;  // Track if a bet was placed this round
+let roundProcessed = false;       // Flag to ensure betting happens once per round
+
+// Main function to control the betting steps
+function performBettingSteps() {
+    // Get the countdown element
     const spinningWheelCountdown = document.querySelector('.text-2xl.font-bold.font-numeric');
-    const previousRollItems = document.querySelectorAll('.previous-rolls-item');
-  
-    // Check if the spinning wheel is currently spinning
-    if (spinningWheelCountdown.textContent === '0,00') {
-      const spinningWheelOutcome = getSpinningWheelOutcome();
-  
-      // Track the number of times the spinning wheel landed on "t" or "ct"
-      if (spinningWheelOutcome === 't' || spinningWheelOutcome === 'ct') {
-        if (!localStorage.getItem('spinCount')) {
-          localStorage.setItem('spinCount', 1);
-        } else {
-          const spinCount = parseInt(localStorage.getItem('spinCount'));
-          localStorage.setItem('spinCount', spinCount + 1);
-          if (spinCount + 1 >= 2) {
-            clickButton(spinningWheelOutcome);
-            localStorage.removeItem('spinCount');
-            console.log('Button pressed: ' + spinningWheelOutcome);
-          }
+    
+    // Check if the countdown element is available and retrieve its value
+    if (spinningWheelCountdown) {
+        const countdownValue = parseFloat(spinningWheelCountdown.textContent.replace(',', '.'));
+
+        // When countdown goes below 6.00, execute step 0 and move to step 1
+        if (countdownValue < 6.00 && stepToPerform === 0 && !roundProcessed) {
+            console.log("Step 0 - Countdown below 6, preparing for betting phase");
+            stepToPerform = 1;  // Proceed to check if betting should occur
         }
-      } else {
-        localStorage.removeItem('spinCount');
-      }
-    } else {
-      // Reset the spinCount when the spinning wheel starts over
-      localStorage.removeItem('spinCount');
-    }
-  
-    // Check the outcome of previous rolls once every time the spinning wheel starts over
-    if (spinningWheelCountdown.textContent === '03,00') {
-      const previousRollOutcomes = Array.from(previousRollItems).map(item => {
-        const coin = item.querySelector('.coin-t, .coin-ct, .coin-bonus');
-        if (coin) {
-          return coin.className.split(' ')[2].split('-')[1];
+
+        // Step 1 - Check if it should bet
+        if (countdownValue < 6.00 && stepToPerform === 1 && !betPlacedInCurrentRound) {
+            console.log("Step 1 - Checking if it should bet");
+            const token2 = CheckIfIShouldBet();
+            
+            // If there is a betting opportunity
+            if (token2 > 0) {
+                token = token2;
+                stepToPerform = 3;  // Proceed to Step 3 to place a bet
+            } else {
+                console.log("Step 2 - No betting opportunity, resetting for next round.");
+                stepToPerform = 0;  // Reset for the next round
+                roundProcessed = true;  // Mark the round as processed to prevent repeated checks
+            }
         }
-        return null;
-      });
-      
-      console.log('Previous roll outcomes:', previousRollOutcomes);
+
+        // Step 3 - Place bet immediately if allowed
+        if (countdownValue < 6.00 && stepToPerform === 3 && !betPlacedInCurrentRound) {
+            console.log("Step 3 - Placing the bet");
+            PlaceBet();
+            betPlacedInCurrentRound = true;  // Mark that a bet was placed this round
+            activeBet = true;
+            stepToPerform = 4;  // Prepare to check results after the next round
+            roundProcessed = true;  // Mark the round as processed
+        }
+
+        // Step 4 - Check the result of the bet when countdown is past 14.00
+        if (countdownValue > 14.00 && activeBet && stepToPerform === 4) {
+            console.log("Step 4 - Checking last round's result");
+            const lastOutcome = CheckLastResult();
+            if (lastButtonClicked && lastOutcome === lastButtonClicked) {
+                console.log("Bet won! Resetting bet amount.");
+                ResetBetAfterWin();
+                streakCT = 0;
+                streakT = 0;
+            } else {
+                console.log("Bet lost! Doubling the bet amount.");
+                DoubleBetAmount();
+            }
+            activeBet = false;
+            betPlacedInCurrentRound = false;  // Reset for the next round
+            stepToPerform = 0;  // Reset for the next betting opportunity
+        }
+
+        // Check if the round has passed and reset roundProcessed when countdown is above 14.00
+        if (countdownValue > 14.00 && roundProcessed) {
+            console.log("Resetting roundProcessed for the new round.");
+            roundProcessed = false;  // Ready for the next round to process
+        }
     }
-  
+
+    // Check countdown and betting steps every second
+    setTimeout(performBettingSteps, 1000);
+}
+
+
+// Function to check if the bot should place a bet (returns a token)
+function CheckIfIShouldBet() {
+    // Check the outcome of the last round
+    const lastOutcome = CheckLastResult();
+    
+    // Update streaks based on the outcome
+    if (lastOutcome === "bet-button-ct") {
+        streakCT++;
+        streakT = 0;  // Reset T streak if outcome is CT
+    } else if (lastOutcome === "bet-button-t") {
+        streakT++;
+        streakCT = 0;  // Reset CT streak if outcome is T
+    } else if (lastOutcome === "bet-button-bonus") {
+        // If it's a bonus result, reset both streaks
+        console.log("Bonus outcome detected. Resetting both streaks.");
+        streakCT = 0;
+        streakT = 0;
+    }
+
+    // Print current streaks
+    console.log(`Current streak - CT: ${streakCT}, T: ${streakT}`);
+    
+    // If there are two consecutive CT or T outcomes, place a bet on the opposite outcome
+    if (streakCT >= 3) {
+        console.log("Detected 3 consecutive CT outcomes. Placing bet on T.");
+        return 1;  // Token for betting on "T"
+    } else if (streakT >= 3) {
+        console.log("Detected 3 consecutive T outcomes. Placing bet on CT.");
+        return 2;  // Token for betting on "CT"
+    }
+
+    // Return 0 if no bet should be placed (never bet on Bonus)
+    return 0;
+}
+
+// Function to place a bet
+function PlaceBet() {
+    let buttonToClick = null;
+    if (token === 1) {
+        buttonToClick = document.querySelector('[data-testid="bet-button-t"]');
+    } else if (token === 2) {
+        buttonToClick = document.querySelector('[data-testid="bet-button-ct"]');
+    }
+
+    if (buttonToClick && !buttonToClick.classList.contains('bet-btn--disabled')) {
+        buttonToClick.click();
+        lastButtonClicked = buttonToClick.getAttribute('data-testid');  // Track which button was clicked
+        console.log('Bet placed on: ' + lastButtonClicked);
+    }
+}
+
+// Function to check the outcome of the last round
+function CheckLastResult() {
+    const latestNumber = document.getElementsByClassName('flex relative h-24')[0].children[9].innerHTML;
+    if (latestNumber.includes("coin-bonus")) {
+        return "bet-button-bonus";
+    } else if (latestNumber.includes("coin-t")) {
+        return "bet-button-t";
+    } else if (latestNumber.includes("coin-ct")) {
+        return "bet-button-ct";
+    }
     return null;
-  }
-  
-  // Function to simulate getting the spinning wheel outcome
-  function getSpinningWheelOutcome() {
-    // Replace this with your logic to determine the spinning wheel outcome
-    const outcomes = ['t', 'ct', 'bonus'];
-    const randomIndex = Math.floor(Math.random() * outcomes.length);
-    return outcomes[randomIndex];
-  }
-  
-  // Run the spinning wheel check repeatedly every second
-  setInterval(checkSpinningWheelOutcome, 1000);
+}
+
+// Function to double the bet amount after a loss
+function DoubleBetAmount() {
+    const doubleBetButton = document.querySelector('[data-testid="roulette-bet-input-x2"]');
+    if (doubleBetButton) {
+        doubleBetButton.click();
+        doubleCount++;
+        console.log('Bet doubled');
+    }
+}
+
+// Function to reset the bet after a win
+function ResetBetAfterWin() {
+    for (let i = 0; i < doubleCount; i++) {
+        const halfBetButton = document.querySelector('[data-testid="roulette-bet-input-1/2"]');
+        if (halfBetButton) {
+            halfBetButton.click();
+            console.log('Bet reset');
+        }
+    }
+    doubleCount = 0;  // Reset the double count after the bet is reset
+    lastBet = startBet;  // Reset the bet amount
+}
+
+// Start the betting process
+performBettingSteps();
